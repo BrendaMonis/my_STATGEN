@@ -1,0 +1,116 @@
+---
+title: "'Statgen Meeting: Cientific Iniciation'"
+date: "`r Sys.Date()`"
+author: "[Statistical Genetics Lab](http://statgen.esalq.usp.br) <br/> Department of Genetics <br/> Luiz de Queiroz College of Agriculture <br/> University of São Paulo"
+output:
+    rmdformats::readthedown:
+      css: readthedownstatgen.css
+editor_options: 
+  chunk_output_type: console
+---
+
+# Linear regression example
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Studying Linear Regression
+
+Based on the data in table 12.2.1 on page 230 from Pimentel's book (1990) was built a linear regression example.\
+
+### Packages: tidyverse & broom 
+Loading *tidyverse* and *broom* library, commented at post-graduation class for constructing scatter plots and regression graphs. 
+```{r, results=FALSE}
+library(tidyverse)
+library(broom)
+```
+
+### Declaring variables
+First, the data came from a randomized block corn fertilization experiment. Therefore, the explanatory variable (P2O5 treatments)and the response variable (corn yield in kg/plot) were stated. 
+```{r, echo=TRUE}
+trat_P2O5 <- c(rep(seq(0,100, by=25), each = 4)); trat_P2O5 
+prod_milho <- c(3.38, 5.77, 4.90, 4.54,
+                7.15, 9.78, 9.99, 10.10,
+                10.07, 9.73, 7.92, 9.48,
+                9.55, 8.95, 10.24, 8.66,
+                9.14, 10.17, 9.75, 9.50); prod_milho
+```
+\
+Then, the variables were assembled into a data frame and, finally, used *attach* to evaluate a variable by simply giving its names.
+```{r, echo=TRUE}
+data_var <- data.frame(cbind(trat_P2O5, prod_milho)); data_var 
+attach(data_var)
+```
+
+### Scatter plot
+In order to create a scatter plot, functions from *ggplot2* were used. 
+The scatter plot relates the Maize yield (kg/portion) as a function of different P~2~O~5~ concentrations (kg/ha).
+```{r, echo=TRUE}
+plot_data <- ggplot(data = data_var, aes(x = trat_P2O5, y = prod_milho)) +
+  geom_point(col = "navy blue") +
+  geom_point(stat = "summary",
+             fun = mean,
+             col = "orange") +
+  theme_light()+
+  theme(
+    plot.title = element_text(color="navy blue", size=24, face="bold")
+  )+
+  labs(x = "P2O5 concentrations (kg/ha)",
+       y = "Maize yield (kg/portion)",
+       title = "Scatter Plot"); plot_data
+```
+
+### Linear regression
+The linear regression was then performed in order to identify the degrees of freedom of the treatments (I-1) and through anova(reg_lin) identify the best fit by p-value.
+```{r, echo=TRUE}
+reg_lin <- lm(data = data_var, prod_milho ~ trat_P2O5 + I(trat_P2O5^2) +I(trat_P2O5^3) +I(trat_P2O5^4)); reg_lin 
+anova(reg_lin)
+```
+\
+Based on the best fitting model, multiple analysis were run.
+```{r, echo=TRUE}
+reg_lin_adj <- lm(data = data_var, prod_milho ~ trat_P2O5 + I(trat_P2O5^2) +I(trat_P2O5^3)); reg_lin_adj
+anova(reg_lin_adj)
+summary(reg_lin_adj)
+tidy(reg_lin_adj)
+augment(reg_lin_adj)
+glance(reg_lin_adj)
+glance(reg_lin_adj) %>% pull(r.squared)
+```
+
+### Regression plot 
+In order to create a regression plot, functions from *ggplot2* were used. Furthermore, the linear regression plot is important to obtain a visual representation of the results of the lm function.\
+
+#### Regression plot with geom_smooth\
+First, *geom_smooth* were used, once it helps to see patterns in the presence of overplotting.\
+```{r, echo=TRUE}
+library(ggplot2)
+ggplot(data = data_var, aes(trat_P2O5, prod_milho))+
+  geom_point(pch=21,col="navy blue",bg="orange",size=2.5)+
+  geom_smooth(method = "lm", formula = y ~ poly(x, 3), col="navy blue")+
+  theme_light()+
+  theme(
+    plot.title = element_text(color="navy blue", size=24, face="bold")
+  )+
+  geom_segment(aes(x=trat_P2O5, y=prod_milho, xend=trat_P2O5, yend=predict(reg_lin_adj)),col="orange")+
+  labs(title=paste("Regression Plot"), x="P2O5 concentrations (kg/ha)", y="Maize yield (kg/portion)")
+```
+
+\
+
+#### Regression plot with stat_function\
+
+The second one, *stat_ function* computes and draws a function as a continuous curve. This makes it easy to superimpose a function on top of an existing plot.
+```{r, echo=TRUE}
+f_rl <- function (x)  4.709e+00 + 2.766e-01*x - 4.828e-03*x^2 +   2.561e-05*x^3
+ggplot(data = data_var, aes(trat_P2O5, prod_milho))+
+  geom_point(pch=21,col="navy blue" ,bg="orange",size=2.5)+
+  stat_function(fun = f_rl, col="navy blue")+
+  theme_light()+
+  theme(
+    plot.title = element_text(color="navy blue", size=24, face="bold")
+  )+
+  geom_segment(aes(x=trat_P2O5, y=prod_milho, xend=trat_P2O5, yend=predict(reg_lin_adj)),col="orange")+
+  labs(title=paste("Regression Plot"), x="P2O5 concentrations (kg/ha)", y="Maize yield (kg/portion)")
+```
